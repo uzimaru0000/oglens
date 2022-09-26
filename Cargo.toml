@@ -1,0 +1,12 @@
+[package]
+name = "oglens"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "3.2.22", features = ["derive"] }
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = { version = "1.0.85", features = ["preserve_order"] }
+tokio = { version = "1.21.1", features = ["full"] }
