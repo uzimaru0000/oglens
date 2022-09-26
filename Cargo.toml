@@ -2,6 +2,26 @@
 name = "oglens"
 version = "0.1.0"
 edition = "2021"
+authors = ["uzimaru0000 <shuji365630@gmail.com>"]
+description = "Tools for viewing OGP"
+omepage = "https://github.com/uzimaru0000/oglens"
+keywords = [
+    "ogp",
+    "viewer",
+    "tool",
+    "cli"
+]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/uzimaru0000/oglens"
+exclude = [
+    ".github/*",
+    "cliff.toml"
+]
+
+[[bin]]
+name = "og"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
