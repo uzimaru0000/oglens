@@ -6,7 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.65"
+atty = "0.2.14"
 clap = { version = "3.2.22", features = ["derive"] }
+cli-table = "0.4.7"
+scraper = "0.13.0"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = { version = "1.0.85", features = ["preserve_order"] }
 tokio = { version = "1.21.1", features = ["full"] }
