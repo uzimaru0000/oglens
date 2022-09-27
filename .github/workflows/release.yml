@@ -1,0 +1,170 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v1
+
+      # https://github.com/actions/cache/blob/master/examples.md#rust---cargo
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1.0.1
+        with:
+          command: build
+          args: --release --target=${{ matrix.target }}
+          use-cross: true
+      - run: |
+          mkdir oglens-${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/oglens* oglens-${{ matrix.target }}
+          cp README.md oglens-${{ matrix.target }}
+          cp LICENSE oglens-${{ matrix.target }}
+          cp -r completions oglens-${{ matrix.target }}
+          zip -r oglens-${{ matrix.target }} oglens-${{ matrix.target }}
+      - uses: actions/upload-artifact@v1
+        with:
+          name: build-${{ matrix.target }}
+          path: oglens-${{ matrix.target }}.zip
+      - run: |
+          shasum -a 256 oglens-${{ matrix.target }}.zip | cut -d" " -f1 > ${{ matrix.target }}.sum
+      - uses: actions/upload-artifact@v1
+        with:
+          name: checksum-${{ matrix.target }}
+          path: ${{ matrix.target }}.sum
+
+  create-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      # https://github.com/actions/cache/blob/master/examples.md#rust---cargo
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1.0.1
+        with:
+          command: install
+          args: git-cliff
+
+      - name: Create CHANGELOG for release
+        run: git-cliff --latest --output latest-release.md
+
+      - id: create-release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: ./latest-release.md
+          draft: false
+          prerelease: false
+      - run: |
+          echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
+      - uses: actions/upload-artifact@v1
+        with:
+          name: create-release
+          path: release_upload_url.txt
+
+  upload-release:
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-apple-darwin
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v1
+        with:
+          name: create-release
+      - id: upload-url
+        run: |
+          echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+      - uses: actions/download-artifact@v1
+        with:
+          name: build-${{ matrix.target }}
+      - uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.upload-url.outputs.url }}
+          asset_path: ./build-${{ matrix.target }}/oglens-${{ matrix.target }}.zip
+          asset_name: oglens-${{ matrix.target }}.zip
+          asset_content_type: application/zip
+
+  update-homebrew:
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v1
+        with:
+          name: checksum-x86_64-apple-darwin
+      - id: checksum
+        run: |
+          echo "::set-output name=sha256::$(cat checksum-x86_64-apple-darwin/x86_64-apple-darwin.sum)"
+      - id: version
+        run: |
+          VERSION=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+          echo ::set-output name=version::$VERSION
+      - uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.PERSONAL_TOKEN }}
+          repository: uzimaru0000/homebrew-tap
+          event-type: update-brew
+          client-payload: '{ "formula": "tv", "description": "Format json into table view", "url": "https://github.com/uzimaru0000/tv/releases/download/${{ steps.version.outputs.version }}/oglens-x86_64-apple-darwin.zip", "sha256": "${{ steps.checksum.outputs.sha256 }}", "version": "${{ steps.version.outputs.version }}" }'
