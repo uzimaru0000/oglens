@@ -54,18 +54,17 @@ jobs:
           args: --release --target=${{ matrix.target }}
           use-cross: true
       - run: |
-          mkdir oglens-${{ matrix.target }}
-          cp target/${{ matrix.target }}/release/oglens* oglens-${{ matrix.target }}
-          cp README.md oglens-${{ matrix.target }}
-          cp LICENSE oglens-${{ matrix.target }}
-          cp -r completions oglens-${{ matrix.target }}
-          zip -r oglens-${{ matrix.target }} oglens-${{ matrix.target }}
+          mkdir og-${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/og* og-${{ matrix.target }}
+          cp README.md og-${{ matrix.target }}
+          cp LICENSE og-${{ matrix.target }}
+          zip -r og-${{ matrix.target }} og-${{ matrix.target }}
       - uses: actions/upload-artifact@v1
         with:
           name: build-${{ matrix.target }}
-          path: oglens-${{ matrix.target }}.zip
+          path: og-${{ matrix.target }}.zip
       - run: |
-          shasum -a 256 oglens-${{ matrix.target }}.zip | cut -d" " -f1 > ${{ matrix.target }}.sum
+          shasum -a 256 og-${{ matrix.target }}.zip | cut -d" " -f1 > ${{ matrix.target }}.sum
       - uses: actions/upload-artifact@v1
         with:
           name: checksum-${{ matrix.target }}
@@ -144,8 +143,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.upload-url.outputs.url }}
-          asset_path: ./build-${{ matrix.target }}/oglens-${{ matrix.target }}.zip
-          asset_name: oglens-${{ matrix.target }}.zip
+          asset_path: ./build-${{ matrix.target }}/og-${{ matrix.target }}.zip
+          asset_name: og-${{ matrix.target }}.zip
           asset_content_type: application/zip
 
   update-homebrew:
@@ -167,4 +166,4 @@ jobs:
           token: ${{ secrets.PERSONAL_TOKEN }}
           repository: uzimaru0000/homebrew-tap
           event-type: update-brew
-          client-payload: '{ "formula": "tv", "description": "Format json into table view", "url": "https://github.com/uzimaru0000/tv/releases/download/${{ steps.version.outputs.version }}/oglens-x86_64-apple-darwin.zip", "sha256": "${{ steps.checksum.outputs.sha256 }}", "version": "${{ steps.version.outputs.version }}" }'
+          client-payload: '{ "formula": "oglens", "description": "Tools for viewing OGP", "url": "https://github.com/uzimaru0000/oglens/releases/download/${{ steps.version.outputs.version }}/og-x86_64-apple-darwin.zip", "sha256": "${{ steps.checksum.outputs.sha256 }}", "version": "${{ steps.version.outputs.version }}" }'
