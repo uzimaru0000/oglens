@@ -1,4 +1,4 @@
-<h1 align="center">:search: OGLens</h1>
+<h1 align="center">:mag: OGLens</h1>
 
 <h2 align="center"><em>
 Tools for viewing OGP
