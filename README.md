@@ -1,5 +1,7 @@
 <h1 align="center">:mag: OGLens</h1>
 
+![](./.github/images/oglens.png)
+
 <h2 align="center"><em>
 Tools for viewing OGP
 </em></h2>
